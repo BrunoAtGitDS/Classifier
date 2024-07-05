@@ -8,7 +8,7 @@ import tempfile
 import os
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-import json
+import traceback
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
@@ -44,7 +44,7 @@ def create_model(weights_file_path=None):
 
 def download_weights_from_drive(file_id, destination):
     gauth = GoogleAuth()
-    gauth.LocalWebserverAuth() # Creates local webserver and auto handles authentication.
+    gauth.LocalWebserverAuth() # Authenticate with local web server.
     drive = GoogleDrive(gauth)
     file = drive.CreateFile({'id': file_id})
     file.GetContentFile(destination)
@@ -67,6 +67,8 @@ if weights_file_id:
         model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
         st.error(f"Error downloading weights: {e}")
+        # Print the stack trace for detailed debug info
+        st.error(traceback.format_exc())
         model = None
 else:
     model = None
