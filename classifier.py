@@ -6,7 +6,9 @@ import numpy as np
 from tensorflow.keras.optimizers import Adam
 import tempfile
 import os
-import py7zr
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+import json
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
@@ -40,71 +42,42 @@ def create_model(weights_file_path=None):
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
+def download_weights_from_drive(file_id, destination):
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth() # Creates local webserver and auto handles authentication.
+    drive = GoogleDrive(gauth)
+    file = drive.CreateFile({'id': file_id})
+    file.GetContentFile(destination)
+
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
 
-# File uploader for 7z split chunks
-uploaded_chunks = []
-chunk_number = 1
-while True:
-    chunk = st.file_uploader(f"Upload weight chunk {chunk_number:03d} (7z.{chunk_number:03d})", type=['7z'])
-    if chunk is None:
-        break
-    uploaded_chunks.append(chunk)
-    chunk_number += 1
-
-if uploaded_chunks:
+# Upload weights from Google Drive
+weights_file_id = st.text_input("Enter Google Drive file ID for the weights file:")
+if weights_file_id:
+    st.write("Downloading weights file from Google Drive...")
     try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Save each uploaded chunk to temporary files with correct names
-            temp_files = []
-            for index, chunk in enumerate(uploaded_chunks, start=1):
-                temp_chunk_path = os.path.join(temp_dir, f"modelFS.weights.7z.{index:03d}")
-                with open(temp_chunk_path, 'wb') as f:
-                    f.write(chunk.read())
-                temp_files.append(temp_chunk_path)
-
-            combined_7z_path = os.path.join(temp_dir, "modelFS.weights.7z")
-
-            # No need to rename files since they are named correctly from the start
-            combined_parts = [combined_7z_path + f".{index:03d}" for index in range(1, len(temp_files) + 1)]
-            st.write(f"Combined parts: {combined_parts}")
-
-            # Extract the combined 7z file to get the .h5 file
-            extracted_h5_path = None
-            with py7zr.SevenZipFile(combined_7z_path + ".001", mode='r') as archive:
-                archive.extractall(path=temp_dir)
-                extracted_files = os.listdir(temp_dir)
-                st.write(f"Extracted files: {extracted_files}")
-
-                for file in extracted_files:
-                    if file.endswith('.h5'):
-                        extracted_h5_path = os.path.join(temp_dir, file)
-                        break
-
-            if extracted_h5_path:
-                # Create the model using the extracted weights file
-                model = create_model(weights_file_path=extracted_h5_path)
-                st.write("Model created successfully")
-                st.write("Model summary:")
-                model.summary(print_fn=lambda x: st.text(x))
-            else:
-                st.error("No .h5 file found in the extracted files.")
-
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_file:
+            download_weights_from_drive(weights_file_id, temp_file.name)
+            weights_file_path = temp_file.name
+        st.success("Weights file downloaded successfully!")
+        model = create_model(weights_file_path=weights_file_path)
+        st.write("Model created successfully")
+        st.write("Model summary:")
+        model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
-        st.error(f"Error processing the weights: {e}")
+        st.error(f"Error downloading weights: {e}")
         model = None
-
 else:
-    st.warning("Please upload the weight chunks.")
     model = None
+    st.warning("Please enter a Google Drive file ID for the weights file.")
 
 # Image uploader and classification
 uploaded_image_file = st.file_uploader("Choose an image to classify", type=["jpg", "jpeg", "png"])
 
 if uploaded_image_file is not None:
     if model is None:
-        st.warning("Please upload the weights file first.")
+        st.warning("Please provide a valid weights file first.")
     else:
         image = Image.open(uploaded_image_file)
         st.image(image, caption='Uploaded Image', use_column_width=True)
