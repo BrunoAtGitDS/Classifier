@@ -5,15 +5,12 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
 import tempfile
+import os
 import traceback
-
-st.config.set_option("server.maxUploadSize", 1024)
-st.config.set_option("server.maxMessageSize", 1024)
-st.config.set_option("server.enableWebsocketCompression", 'false')
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
-
+    
     model = tf.keras.models.Sequential([
         base_model,
         tf.keras.layers.GlobalAveragePooling2D(),
@@ -32,7 +29,7 @@ def create_model(weights_file_path=None):
         tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
-
+    
     if weights_file_path:
         try:
             model.load_weights(weights_file_path)
@@ -43,6 +40,8 @@ def create_model(weights_file_path=None):
 
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
+
+### Streamlit Application Code
 
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
