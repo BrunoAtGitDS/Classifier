@@ -10,7 +10,7 @@ import py7zr
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
-    
+
     model = tf.keras.models.Sequential([
         base_model,
         tf.keras.layers.GlobalAveragePooling2D(),
@@ -29,7 +29,7 @@ def create_model(weights_file_path=None):
         tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
-    
+
     if weights_file_path:
         try:
             model.load_weights(weights_file_path)
@@ -47,7 +47,7 @@ st.write("This app uses a pre-trained model to classify images.")
 uploaded_chunks = []
 chunk_number = 1
 while True:
-    chunk = st.file_uploader(f"Upload weight chunk {chunk_number:03d}", type=['7z'])
+    chunk = st.file_uploader(f"Upload weight chunk {chunk_number:03d} (7z.{chunk_number:03d})", type=['7z'])
     if chunk is None:
         break
     uploaded_chunks.append(chunk)
@@ -56,23 +56,18 @@ while True:
 if uploaded_chunks:
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Save each uploaded chunk to temporary files
+            # Save each uploaded chunk to temporary files with correct names
             temp_files = []
-            for i, chunk in enumerate(uploaded_chunks):
-                temp_chunk_path = os.path.join(temp_dir, f"modelFS.weights.7z.{i+1:03d}")
+            for index, chunk in enumerate(uploaded_chunks, start=1):
+                temp_chunk_path = os.path.join(temp_dir, f"modelFS.weights.7z.{index:03d}")
                 with open(temp_chunk_path, 'wb') as f:
                     f.write(chunk.read())
                 temp_files.append(temp_chunk_path)
 
-            # Ensure the parts are correctly named as per py7zr requirements
             combined_7z_path = os.path.join(temp_dir, "modelFS.weights.7z")
-            for temp_file in temp_files:
-                part_number = temp_file.split('.')[-1]
-                combined_part_path = combined_7z_path + '.' + part_number
-                os.rename(temp_file, combined_part_path)
 
-            # Debug: Check combined parts are correctly named and combined
-            combined_parts = [combined_7z_path + f".{i+1:03d}" for i in range(len(temp_files))]
+            # No need to rename files since they are named correctly from the start
+            combined_parts = [combined_7z_path + f".{index:03d}" for index in range(1, len(temp_files) + 1)]
             st.write(f"Combined parts: {combined_parts}")
 
             # Extract the combined 7z file to get the .h5 file
