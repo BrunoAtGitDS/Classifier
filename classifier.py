@@ -47,13 +47,12 @@ st.write("This app uses a pre-trained model to classify images.")
 uploaded_chunks = []
 chunk_number = 1
 while True:
-    chunk = st.file_uploader(f"Upload weight chunk {chunk_number} (.{chunk_number:03d}.7z)", type=['7z'])
+    chunk = st.file_uploader(f"Upload weight chunk {chunk_number:03d}", type=['7z'])
     if chunk is None:
         break
     uploaded_chunks.append(chunk)
     chunk_number += 1
 
-# Ensure all chunks are combined
 if uploaded_chunks:
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -65,19 +64,18 @@ if uploaded_chunks:
                     f.write(chunk.read())
                 temp_files.append(temp_chunk_path)
 
-            # Combine 7z files into a single file
+            # Ensure that 7z is correctly handling split files
             combined_7z_path = os.path.join(temp_dir, "combined_weights.7z")
-            with open(combined_7z_path, 'wb') as combined_7z:
-                for temp_file in temp_files:
-                    with open(temp_file, 'rb') as f:
-                        combined_7z.write(f.read())
+            for temp_file in temp_files:
+                os.rename(temp_file, combined_7z_path + f".{i+1:03d}")
 
             # Debug: Check if the combined 7z file is created and its size
-            st.write(f"Combined 7z file size: {os.path.getsize(combined_7z_path)} bytes")
+            combined_7z_files = [combined_7z_path + f".{i+1:03d}" for i in range(len(temp_files))]
+            st.write(f"Combined 7z file parts: {combined_7z_files}")
 
             # Extract the combined 7z file to get the .h5 file
             extracted_h5_path = None
-            with py7zr.SevenZipFile(combined_7z_path, mode='r') as archive:
+            with py7zr.SevenZipFile(combined_7z_path + ".001", mode='r') as archive:
                 archive.extractall(path=temp_dir)
                 extracted_files = os.listdir(temp_dir)
                 st.write(f"Extracted files: {extracted_files}")
