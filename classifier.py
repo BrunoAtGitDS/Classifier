@@ -7,8 +7,12 @@ import os
 from tensorflow.keras.optimizers import Adam
 
 # Define the custom MobileNet model
+#def MobileNetmodelFS():
+#    base_model = MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+#   return base_model
+
 def MobileNetmodelFS():
-    base_model = MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+    base_model = MobileNet(weights=weights, include_top=False, input_shape=(224, 224, 3))
     return base_model
 
 # Define the full model structure
@@ -43,8 +47,11 @@ model.build((None, 224, 224, 3))
 model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Load the weights
-weights_path = os.path.join('D:\\', 'DeepLearning', 'Models', 'modelFS.weights.h5')
-model.load_weights(weights_path)
+#weights_path = os.path.join('D:\\', 'DeepLearning', 'Models', 'modelFS.weights.h5')
+#model.load_weights(weights_path)
+
+
+weights = keras.utils.get_file('mobilenet_weights_no_top.h5', 'https://storage.googleapis.com/tensorflow/keras-applications/mobilenet/mobilenet_no_top.h5', cache_subdir='models')
 
 print("Model loaded successfully")
 
