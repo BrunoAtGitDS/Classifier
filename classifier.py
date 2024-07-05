@@ -44,19 +44,29 @@ def create_model(weights_file_path=None):
     return model
 
 def authenticate_with_service_account():
-    # Path to the service account key file
-    service_account_key = 'service_account_credentials.json'
-    scope = ['https://www.googleapis.com/auth/drive']
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(service_account_key, scope)
-    gauth = GoogleAuth()
-    gauth.credentials = credentials
-    drive = GoogleDrive(gauth)
-    return drive
+    try:
+        # Path to the service account key file
+        service_account_key = 'service_account_credentials.json'
+        scope = ['https://www.googleapis.com/auth/drive']
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_account_key, scope)
+        gauth = GoogleAuth()
+        gauth.credentials = credentials
+        drive = GoogleDrive(gauth)
+        return drive
+    except Exception as e:
+        st.error("Failed to authenticate using service account.")
+        st.error(traceback.format_exc())
+        raise e
 
 def download_weights_from_drive(file_id, destination):
-    drive = authenticate_with_service_account()
-    file = drive.CreateFile({'id': file_id})
-    file.GetContentFile(destination)
+    try:
+        drive = authenticate_with_service_account()
+        file = drive.CreateFile({'id': file_id})
+        file.GetContentFile(destination)
+    except Exception as e:
+        st.error("Failed to download file from Google Drive.")
+        st.error(traceback.format_exc())
+        raise e
 
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
@@ -76,8 +86,6 @@ if weights_file_id:
         model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
         st.error(f"Error downloading weights: {e}")
-        # Print the stack trace for detailed debug info
-        st.error(traceback.format_exc())
         model = None
 else:
     model = None
