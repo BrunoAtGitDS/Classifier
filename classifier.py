@@ -53,7 +53,6 @@ while True:
     uploaded_chunks.append(chunk)
     chunk_number += 1
 
-
 # Ensure all chunks are combined
 if uploaded_chunks:
     try:
