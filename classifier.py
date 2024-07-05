@@ -64,14 +64,16 @@ if uploaded_chunks:
                     f.write(chunk.read())
                 temp_files.append(temp_chunk_path)
 
-            # Ensure that 7z is correctly handling split files
-            combined_7z_path = os.path.join(temp_dir, "combined_weights.7z")
+            # Ensure the parts are correctly named as per py7zr requirements
+            combined_7z_path = os.path.join(temp_dir, "modelFS.weights.7z")
             for temp_file in temp_files:
-                os.rename(temp_file, combined_7z_path + f".{i+1:03d}")
+                part_number = temp_file.split('.')[-1]
+                combined_part_path = combined_7z_path + '.' + part_number
+                os.rename(temp_file, combined_part_path)
 
-            # Debug: Check if the combined 7z file is created and its size
-            combined_7z_files = [combined_7z_path + f".{i+1:03d}" for i in range(len(temp_files))]
-            st.write(f"Combined 7z file parts: {combined_7z_files}")
+            # Debug: Check combined parts are correctly named and combined
+            combined_parts = [combined_7z_path + f".{i+1:03d}" for i in range(len(temp_files))]
+            st.write(f"Combined parts: {combined_parts}")
 
             # Extract the combined 7z file to get the .h5 file
             extracted_h5_path = None
