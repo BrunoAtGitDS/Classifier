@@ -7,6 +7,10 @@ from tensorflow.keras.optimizers import Adam
 import tempfile
 import traceback
 
+st.config.set_option("server.maxUploadSize", 1024)
+st.config.set_option("server.maxMessageSize", 1024)
+st.config.set_option("server.enableWebsocketCompression", 'false')
+
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
 
