@@ -4,12 +4,10 @@ from tensorflow.keras.applications import MobileNet
 from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
-import io
-import h5py
 import tempfile
 import os
 
-def create_model(weights_data=None):
+def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
     
     model = tf.keras.models.Sequential([
@@ -31,25 +29,13 @@ def create_model(weights_data=None):
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     
-    if weights_data:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_file:
-            temp_file.write(weights_data)
-            temp_file_path = temp_file.name
-
+    if weights_file_path:
         try:
-            with h5py.File(temp_file_path, 'r') as f:
-                layer_names = list(f.keys())
-                for i, layer in enumerate(model.layers):
-                    if layer.name in layer_names:
-                        weight_names = [n.decode('utf8') for n in f[layer.name].attrs['weight_names']]
-                        weights = [f[layer.name][weight_name][:] for weight_name in weight_names]
-                        layer.set_weights(weights)
+            model.load_weights(weights_file_path)
             st.write("Weights loaded successfully")
         except Exception as e:
             st.error(f"Error loading weights: {e}")
-        finally:
-            os.unlink(temp_file_path)
-    
+
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
@@ -61,26 +47,32 @@ uploaded_chunks = []
 chunk_number = 1
 while True:
     chunk = st.file_uploader(f"Upload weight chunk {chunk_number} (.{chunk_number:03d})", type=['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013'])
-    if chunk:
-        uploaded_chunks.append(chunk)
-        chunk_number += 1
-    else:
+    if chunk is None:
         break
+    uploaded_chunks.append(chunk)
+    chunk_number += 1
 
 if uploaded_chunks:
     # Combine chunks
     combined_weights = b''.join([chunk.read() for chunk in uploaded_chunks])
     st.write(f"Combined weights size: {len(combined_weights)} bytes")
     
+    # Save the combined weights to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_file:
+        temp_file.write(combined_weights)
+        temp_file_path = temp_file.name
+        
     # Create the model using the weights
     try:
-        model = create_model(weights_data=combined_weights)
+        model = create_model(weights_file_path=temp_file_path)
         st.write("Model created successfully")
         st.write("Model summary:")
         model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
         st.error(f"Error creating the model: {e}")
         model = None
+    finally:
+        os.unlink(temp_file_path)
 else:
     st.warning("Please upload the weight chunks.")
     model = None
