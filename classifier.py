@@ -116,3 +116,4 @@ if uploaded_image_file is not None:
                 st.error(f"Error making prediction: {e}")
 else:
     st.write("Please upload an image to classify.")
+    
