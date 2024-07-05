@@ -8,6 +8,7 @@ import tempfile
 import os
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+from oauth2client.service_account import ServiceAccountCredentials
 import traceback
 
 def create_model(weights_file_path=None):
@@ -42,14 +43,22 @@ def create_model(weights_file_path=None):
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
-def download_weights_from_drive(file_id, destination):
+def authenticate_with_service_account():
+    # Path to the service account key file
+    service_account_key = 'service_account_credentials.json'
+    scope = ['https://www.googleapis.com/auth/drive']
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(service_account_key, scope)
     gauth = GoogleAuth()
-    gauth.LocalWebserverAuth() # Authenticate with local web server.
+    gauth.credentials = credentials
     drive = GoogleDrive(gauth)
+    return drive
+
+def download_weights_from_drive(file_id, destination):
+    drive = authenticate_with_service_account()
     file = drive.CreateFile({'id': file_id})
     file.GetContentFile(destination)
 
-st.title("Image Classification App GDrive")
+st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
 
 # Upload weights from Google Drive
