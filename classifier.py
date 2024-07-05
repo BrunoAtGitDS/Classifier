@@ -11,11 +11,6 @@ from pydrive.drive import GoogleDrive
 from oauth2client.service_account import ServiceAccountCredentials
 import traceback
 
-st.config.set_option("server.maxUploadSize", 5000)
-st.config.set_option("server.maxMessageSize", 5000)
-st.config.set_option("server.enableWebsocketCompression", 'true')
-
-
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
 
