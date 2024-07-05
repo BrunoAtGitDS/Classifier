@@ -24,25 +24,50 @@ def MobileNetmodelFS(weights_path=None):
     return base_model
 
 def create_model(weights_path=None):
-    model = tf.keras.models.Sequential([
-        MobileNetmodelFS(weights_path=weights_path),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(512, activation='relu'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(256, activation='relu'),
-        tf.keras.layers.Dropout(0.7),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dropout(0.5),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(32, activation='relu'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(2, activation='softmax')
-    ])
-    model.build((None, 224, 224, 3))
+    if weights_path:
+        try:
+            model = tf.keras.models.load_model(weights_path)
+            st.write("Full model loaded successfully")
+        except:
+            st.write("Couldn't load full model, trying to load as custom model...")
+            model = tf.keras.models.Sequential([
+                MobileNetmodelFS(weights_path=weights_path),
+                tf.keras.layers.Flatten(),
+                tf.keras.layers.Dense(512, activation='relu'),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(256, activation='relu'),
+                tf.keras.layers.Dropout(0.7),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(128, activation='relu'),
+                tf.keras.layers.Dropout(0.5),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(64, activation='relu'),
+                tf.keras.layers.Dropout(0.3),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(32, activation='relu'),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(2, activation='softmax')
+            ])
+    else:
+        model = tf.keras.models.Sequential([
+            MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3)),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(512, activation='relu'),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(256, activation='relu'),
+            tf.keras.layers.Dropout(0.7),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dropout(0.5),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(2, activation='softmax')
+        ])
+    
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
@@ -70,6 +95,15 @@ except Exception as e:
     model = None
 
 uploaded_image_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+
+if os.path.exists(weights_path):
+    file_size = os.path.getsize(weights_path)
+    st.write(f"Downloaded file size: {file_size} bytes")
+    if file_size < 1000:  # Adjust this threshold as needed
+        st.error("The downloaded file seems too small. It may not contain the weights.")
+else:
+    st.error("Weights file was not downloaded successfully.")
+    
 
 if uploaded_image_file is not None:
     image = Image.open(uploaded_image_file)
