@@ -4,10 +4,8 @@ from tensorflow.keras.applications import MobileNet
 from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
-import os
 import io
 
-# Define custom MobileNet model
 def create_model(weights_data=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
     
@@ -43,12 +41,16 @@ st.write("This app uses a pre-trained model to classify images.")
 
 # File uploader for weight chunks
 uploaded_chunks = []
-for i in range(13):  # Assuming we split into 13 chunks of ~24MB each
-    chunk = st.file_uploader(f"Upload weight chunk {i+1}", type=['bin'])
+chunk_number = 1
+while True:
+    chunk = st.file_uploader(f"Upload weight chunk {chunk_number} (.{chunk_number:03d})", type=['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013'])
     if chunk:
         uploaded_chunks.append(chunk)
+        chunk_number += 1
+    else:
+        break
 
-if len(uploaded_chunks) == 13:  # Check if all chunks are uploaded
+if uploaded_chunks:
     # Combine chunks
     combined_weights = b''.join([chunk.read() for chunk in uploaded_chunks])
     st.write(f"Combined weights size: {len(combined_weights)} bytes")
@@ -63,7 +65,7 @@ if len(uploaded_chunks) == 13:  # Check if all chunks are uploaded
         st.error(f"Error creating the model: {e}")
         model = None
 else:
-    st.warning(f"Please upload all 13 weight chunks. Currently uploaded: {len(uploaded_chunks)}/13")
+    st.warning("Please upload the weight chunks.")
     model = None
 
 uploaded_image_file = st.file_uploader("Choose an image to classify", type=["jpg", "jpeg", "png"])
