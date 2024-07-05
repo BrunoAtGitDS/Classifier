@@ -3,7 +3,6 @@ import tensorflow as tf
 from tensorflow.keras.applications import MobileNet
 from PIL import Image
 import numpy as np
-import os
 from tensorflow.keras.optimizers import Adam
 
 # Define the custom MobileNet model
