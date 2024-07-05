@@ -4,6 +4,7 @@ from tensorflow.keras.applications import MobileNet
 from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
+import tempfile
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
