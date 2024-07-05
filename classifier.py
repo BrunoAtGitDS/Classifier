@@ -5,9 +5,10 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
 import os
+import io
 
 # Define custom MobileNet model
-def create_model(weights_path=None):
+def create_model(weights_data=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
     
     model = tf.keras.models.Sequential([
@@ -29,8 +30,9 @@ def create_model(weights_path=None):
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     
-    if weights_path:
-        model.load_weights(weights_path)
+    if weights_data:
+        weights_file = io.BytesIO(weights_data)
+        model.load_weights(weights_file)
         st.write("Weights loaded successfully")
     
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -39,15 +41,21 @@ def create_model(weights_path=None):
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
 
-weights_path = 'modelFS.weights.h5'  # Assume the file is in the same directory
+# File uploader for weight chunks
+uploaded_chunks = []
+for i in range(13):  # Assuming we split into 13 chunks of ~24MB each
+    chunk = st.file_uploader(f"Upload weight chunk {i+1}", type=['bin'])
+    if chunk:
+        uploaded_chunks.append(chunk)
 
-if os.path.exists(weights_path):
-    file_size = os.path.getsize(weights_path)
-    st.write(f"Weights file size: {file_size} bytes")
+if len(uploaded_chunks) == 13:  # Check if all chunks are uploaded
+    # Combine chunks
+    combined_weights = b''.join([chunk.read() for chunk in uploaded_chunks])
+    st.write(f"Combined weights size: {len(combined_weights)} bytes")
     
     # Create the model using the weights
     try:
-        model = create_model(weights_path=weights_path)
+        model = create_model(weights_data=combined_weights)
         st.write("Model created successfully")
         st.write("Model summary:")
         model.summary(print_fn=lambda x: st.text(x))
@@ -55,9 +63,10 @@ if os.path.exists(weights_path):
         st.error(f"Error creating the model: {e}")
         model = None
 else:
-    st.error("Weights file not found. Please ensure 'modelFS.weights.h5' is in the same directory as this script.")
+    st.warning(f"Please upload all 13 weight chunks. Currently uploaded: {len(uploaded_chunks)}/13")
+    model = None
 
-uploaded_image_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_image_file = st.file_uploader("Choose an image to classify", type=["jpg", "jpeg", "png"])
 
 if uploaded_image_file is not None:
     image = Image.open(uploaded_image_file)
