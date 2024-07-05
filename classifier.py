@@ -16,11 +16,9 @@ def download_file_from_google_drive(id, destination):
 
 # Define custom MobileNet model
 def MobileNetmodelFS(weights_path=None):
+    base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
     if weights_path:
-        base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
         base_model.load_weights(weights_path)
-    else:
-        base_model = MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
     return base_model
 
 def create_model(weights_path=None):
@@ -32,7 +30,7 @@ def create_model(weights_path=None):
             st.write("Couldn't load full model, trying to load as custom model...")
             model = tf.keras.models.Sequential([
                 MobileNetmodelFS(weights_path=weights_path),
-                tf.keras.layers.Flatten(),
+                tf.keras.layers.GlobalAveragePooling2D(),
                 tf.keras.layers.Dense(512, activation='relu'),
                 tf.keras.layers.BatchNormalization(),
                 tf.keras.layers.Dense(256, activation='relu'),
@@ -51,7 +49,7 @@ def create_model(weights_path=None):
     else:
         model = tf.keras.models.Sequential([
             MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3)),
-            tf.keras.layers.Flatten(),
+            tf.keras.layers.GlobalAveragePooling2D(),
             tf.keras.layers.Dense(512, activation='relu'),
             tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dense(256, activation='relu'),
@@ -86,16 +84,6 @@ if not os.path.exists(weights_path):
         except Exception as e:
             st.error(f"Error downloading model weights: {e}")
 
-# Create the model using the downloaded weights
-try:
-    model = create_model(weights_path=weights_path)
-    st.write("Model loaded successfully")
-except Exception as e:
-    st.error(f"Error creating the model: {e}")
-    model = None
-
-uploaded_image_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-
 if os.path.exists(weights_path):
     file_size = os.path.getsize(weights_path)
     st.write(f"Downloaded file size: {file_size} bytes")
@@ -103,7 +91,17 @@ if os.path.exists(weights_path):
         st.error("The downloaded file seems too small. It may not contain the weights.")
 else:
     st.error("Weights file was not downloaded successfully.")
-    
+
+# Create the model using the downloaded weights
+try:
+    model = create_model(weights_path=weights_path)
+    st.write("Model created successfully")
+    st.write(f"Model summary: {model.summary()}")
+except Exception as e:
+    st.error(f"Error creating the model: {e}")
+    model = None
+
+uploaded_image_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_image_file is not None:
     image = Image.open(uploaded_image_file)
@@ -121,13 +119,14 @@ if uploaded_image_file is not None:
         preprocessed_image = preprocess_image(image)
         prediction = model.predict(preprocessed_image)
         class_names = ['Benign', 'Malignant']  # Replace with your actual class names
-        return class_names[np.argmax(prediction[0])]  # Get predicted class
+        return class_names[np.argmax(prediction[0])], prediction[0]  # Get predicted class and probabilities
 
     if model:
         with st.spinner('Classifying...'):
             try:
-                prediction = make_prediction(image)
-                st.success(f"Predicted Class: {prediction}")
+                predicted_class, probabilities = make_prediction(image)
+                st.success(f"Predicted Class: {predicted_class}")
+                st.write(f"Probabilities: Benign: {probabilities[0]:.2f}, Malignant: {probabilities[1]:.2f}")
             except Exception as e:
                 st.error(f"Error making prediction: {e}")
     else:
