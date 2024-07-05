@@ -5,10 +5,6 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
 import tempfile
-import os
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-from oauth2client.service_account import ServiceAccountCredentials
 import traceback
 
 def create_model(weights_file_path=None):
@@ -39,63 +35,42 @@ def create_model(weights_file_path=None):
             st.write("Weights loaded successfully")
         except Exception as e:
             st.error(f"Error loading weights: {e}")
+            st.error(traceback.format_exc())
 
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
-def authenticate_with_service_account():
-    try:
-        service_account_key = 'service_account_credentials.json'
-        scope = ['https://www.googleapis.com/auth/drive']
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_account_key, scope)
-        gauth = GoogleAuth()
-        gauth.credentials = credentials
-        drive = GoogleDrive(gauth)
-        return drive
-    except Exception as e:
-        st.error("Failed to authenticate using service account.")
-        st.error(traceback.format_exc())
-        raise e
-
-def download_weights_from_drive(file_id, destination):
-    try:
-        drive = authenticate_with_service_account()
-        file = drive.CreateFile({'id': file_id})
-        file.GetContentFile(destination)
-    except Exception as e:
-        st.error("Failed to download file from Google Drive.")
-        st.error(traceback.format_exc())
-        raise e
-
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
 
-# Upload weights from Google Drive
-weights_file_id = st.text_input("Enter Google Drive file ID for the weights file:")
-if weights_file_id:
-    st.write("Downloading weights file from Google Drive...")
+# File uploader for weights file
+uploaded_weights_file = st.file_uploader("Upload the weights .h5 file", type='h5')
+
+if uploaded_weights_file is not None:
+    st.write("Weights file uploaded successfully!")
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_file:
-            download_weights_from_drive(weights_file_id, temp_file.name)
+            temp_file.write(uploaded_weights_file.getbuffer())
             weights_file_path = temp_file.name
-        st.success("Weights file downloaded successfully!")
+        
         model = create_model(weights_file_path=weights_file_path)
         st.write("Model created successfully")
         st.write("Model summary:")
         model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
-        st.error(f"Error downloading weights: {e}")
+        st.error(f"Error processing the weights file: {e}")
+        st.error(traceback.format_exc())
         model = None
 else:
     model = None
-    st.warning("Please enter a Google Drive file ID for the weights file.")
+    st.warning("Please upload the weights .h5 file.")
 
 # Image uploader and classification
 uploaded_image_file = st.file_uploader("Choose an image to classify", type=["jpg", "jpeg", "png"])
 
 if uploaded_image_file is not None:
     if model is None:
-        st.warning("Please provide a valid weights file first.")
+        st.warning("Please upload the weights file first.")
     else:
         image = Image.open(uploaded_image_file)
         st.image(image, caption='Uploaded Image', use_column_width=True)
