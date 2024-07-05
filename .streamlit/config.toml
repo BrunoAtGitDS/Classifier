@@ -1,2 +1,2 @@
 [server]
-maxUploadSize = 400
+maxUploadSize = 1024  # Set this value to your required limit in MB
