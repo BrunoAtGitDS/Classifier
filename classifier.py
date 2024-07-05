@@ -6,6 +6,7 @@ import numpy as np
 from tensorflow.keras.optimizers import Adam
 import tempfile
 import os
+import py7zr
 
 def create_model(weights_file_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
@@ -42,41 +43,58 @@ def create_model(weights_file_path=None):
 st.title("Image Classification App")
 st.write("This app uses a pre-trained model to classify images.")
 
-# File uploader for weight chunks
+# File uploader for 7z chunks
 uploaded_chunks = []
 chunk_number = 1
 while True:
-    chunk = st.file_uploader(f"Upload weight chunk {chunk_number} (.{chunk_number:03d})", type=['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013'])
+    chunk = st.file_uploader(f"Upload weight chunk {chunk_number} (.{chunk_number:03d}.7z)", type=['7z'])
     if chunk is None:
         break
     uploaded_chunks.append(chunk)
     chunk_number += 1
 
+
+# Ensure all chunks are combined
 if uploaded_chunks:
-    # Combine chunks
-    combined_weights = b''.join([chunk.read() for chunk in uploaded_chunks])
-    st.write(f"Combined weights size: {len(combined_weights)} bytes")
-    
-    # Save the combined weights to a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_file:
-        temp_file.write(combined_weights)
-        temp_file_path = temp_file.name
-        
-    # Create the model using the weights
     try:
-        model = create_model(weights_file_path=temp_file_path)
-        st.write("Model created successfully")
-        st.write("Model summary:")
-        model.summary(print_fn=lambda x: st.text(x))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Save each uploaded chunk to temporary files
+            temp_files = []
+            for i, chunk in enumerate(uploaded_chunks):
+                temp_chunk_path = os.path.join(temp_dir, f"chunk_{i:03d}.7z")
+                with open(temp_chunk_path, 'wb') as f:
+                    f.write(chunk.read())
+                temp_files.append(temp_chunk_path)
+
+            # Combine 7z files
+            combined_7z_path = os.path.join(temp_dir, "combined_weights.7z")
+            with open(combined_7z_path, 'wb') as combined_7z:
+                for temp_file in temp_files:
+                    with open(temp_file, 'rb') as f:
+                        combined_7z.write(f.read())
+
+            # Extract the combined 7z file to get the .h5 file
+            extracted_h5_path = os.path.join(temp_dir, "weights.h5")
+            with py7zr.SevenZipFile(combined_7z_path, mode='r') as archive:
+                extracted_files = archive.extractall(path=temp_dir)
+                # Assuming the .h5 file is named "weights.h5" in the archive
+                extracted_h5_path = os.path.join(temp_dir, list(extracted_files.keys())[0])
+
+            # Create the model using the extracted weights file
+            model = create_model(weights_file_path=extracted_h5_path)
+            st.write("Model created successfully")
+            st.write("Model summary:")
+            model.summary(print_fn=lambda x: st.text(x))
+
     except Exception as e:
-        st.error(f"Error creating the model: {e}")
+        st.error(f"Error processing the weights: {e}")
         model = None
-    finally:
-        os.unlink(temp_file_path)
+
 else:
     st.warning("Please upload the weight chunks.")
     model = None
 
+# Image uploader and classification
 uploaded_image_file = st.file_uploader("Choose an image to classify", type=["jpg", "jpeg", "png"])
 
 if uploaded_image_file is not None:
