@@ -10,10 +10,7 @@ from tensorflow.keras.optimizers import Adam
 def MobileNetmodelFS():
     base_model = MobileNet(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
     return base_model
-
-def MobileNetmodelFS():
-    base_model = MobileNet(weights=weights, include_top=False, input_shape=(224, 224, 3))
-    return base_model
+ 
 
 # Define the full model structure
 def create_model():
