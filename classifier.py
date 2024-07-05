@@ -5,8 +5,10 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
 import io
+import os
+import tempfile
 
-def create_model(weights_data=None):
+def create_model(weights_path=None):
     base_model = MobileNet(weights=None, include_top=False, input_shape=(224, 224, 3))
     
     model = tf.keras.models.Sequential([
@@ -28,9 +30,8 @@ def create_model(weights_data=None):
         tf.keras.layers.Dense(2, activation='softmax')
     ])
     
-    if weights_data:
-        weights_file = io.BytesIO(weights_data)
-        model.load_weights(weights_file)
+    if weights_path:
+        model.load_weights(weights_path)
         st.write("Weights loaded successfully")
     
     model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -51,19 +52,26 @@ while True:
         break
 
 if uploaded_chunks:
-    # Combine chunks
-    combined_weights = b''.join([chunk.read() for chunk in uploaded_chunks])
-    st.write(f"Combined weights size: {len(combined_weights)} bytes")
+    # Combine chunks and save to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.weights.h5') as temp_file:
+        for chunk in uploaded_chunks:
+            temp_file.write(chunk.read())
+        temp_file_path = temp_file.name
+
+    st.write(f"Combined weights size: {os.path.getsize(temp_file_path)} bytes")
     
     # Create the model using the weights
     try:
-        model = create_model(weights_data=combined_weights)
+        model = create_model(weights_path=temp_file_path)
         st.write("Model created successfully")
         st.write("Model summary:")
         model.summary(print_fn=lambda x: st.text(x))
     except Exception as e:
         st.error(f"Error creating the model: {e}")
         model = None
+    finally:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
 else:
     st.warning("Please upload the weight chunks.")
     model = None
