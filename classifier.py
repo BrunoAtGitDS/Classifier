@@ -49,7 +49,7 @@ def download_weights_from_drive(file_id, destination):
     file = drive.CreateFile({'id': file_id})
     file.GetContentFile(destination)
 
-st.title("Image Classification App")
+st.title("Image Classification App GDrive")
 st.write("This app uses a pre-trained model to classify images.")
 
 # Upload weights from Google Drive
