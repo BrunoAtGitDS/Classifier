@@ -100,4 +100,4 @@ if uploaded_image_file is not None:
             except Exception as e:
                 st.error(f"Error making prediction: {e}")
 else:
-    st.write("Please upload an image to classify.")
+    st.write("Please upload an image to classify.") 
